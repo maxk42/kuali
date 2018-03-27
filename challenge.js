@@ -1,8 +1,10 @@
+"use strict;"
 const EventEmitter = require('events');
 class Elevator extends EventEmitter {
 	constructor(floors, currentFloor) {
 		this.floors = floors;
 		this.currentFloor = floor;
+		this.destination = floor;
 		this.doorsOpen = true;
 		this.trips = 0;
 		this.floorsPassed = 0;
@@ -18,12 +20,6 @@ class Elevator extends EventEmitter {
 	}
 	
 	moveTo(floor) {
-		if(this.doorsOpen) {
-			this.closeDoors();
-		}
-	}
-	
-	moveTo(floor) {
 		if(this.state == 'maintenance') {
 			this.emit('invalid request', 'moveTo', 'maintenance');
 			return false;
@@ -36,6 +32,7 @@ class Elevator extends EventEmitter {
 			return false;
 		}
 		this.emit('moving to floor', floor);
+		this.destination = floor;
 		if(this.doorsOpen) {
 			this.closeDoors();
 		}
@@ -67,7 +64,7 @@ class Elevator extends EventEmitter {
 			this.closeDoors();
 		}
 		this.currentFloor--;
-		this.floorsPassed++;
+		this.arriveAtFloor(this.currentFloor);
 	}
 	
 	moveUp() {
@@ -79,7 +76,7 @@ class Elevator extends EventEmitter {
 			this.closeDoors();
 		}
 		this.currentFloor++;
-		this.floorsPassed++;
+		this.arriveAtFloor(this.currentFloor);
 	}
 	
 	arriveAtFloor(floor) {
@@ -97,10 +94,32 @@ class ElevatorController {
 	}
 	
 	requestElevator(fromFloor, direction) {
-		for(let elevator in this.elevators) {
-			if(this.elevators.currentFloor == fromFloor) {
+		let targetElevator = false;
+		while(targetElevator === false) {	// repeat until an elevator becomes available
+			for(let elevatorIndex in this.elevators) {
+				let elevator = elevators[elevatorIndex];
+				if(elevator.currentFloor == fromFloor) {
+					elevatorFound = elevatorIndex;
+					break;
+				}
+				if(elevator.state == "maintenance") {
+					continue;
+				}
+				// Precompute a few conditionals to make the following `if` statement readable
+				let truthTable = {
+					moving: elevator.state == "moving",
+					movingPast: (elevator.floor >= fromFloor && elevator.destination <= fromFloor)
+						|| (elevator.floor <= fromFloor && elevator.destination >= fromFloor),
+					elevatorIsCloser: Math.abs(elevator.floor - fromFloor) < Math.abs(elevators[targetElevator].floor - fromFloor)
+				};
+				if( (truthTable.movingPast || !truthTable.moving) && (truthTable.elevatorIscloser || targetElevator === false) ) {
+					targetElevator = elevatorIndex;
+				}
 			}
 		}
 	}
+	
 }
 
+
+x = new ElevatorController(10, 100)
